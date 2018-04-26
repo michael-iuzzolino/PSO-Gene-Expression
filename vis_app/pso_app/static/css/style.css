@@ -1,0 +1,17 @@
+.param_input_text {
+    /* position: relative;
+    right: 20px; */
+}
+
+.param_container {
+    width: 20px;
+    margin-left: 20px;
+}
+
+#run_button {
+    margin-top: 10px;
+}
+
+#title_div {
+    text-align: center;
+}
