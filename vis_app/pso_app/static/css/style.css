@@ -8,6 +8,10 @@
     margin-left: 20px;
 }
 
+.histo_bar {
+    fill: steelblue;
+}
+
 #run_button {
     margin-top: 10px;
 }

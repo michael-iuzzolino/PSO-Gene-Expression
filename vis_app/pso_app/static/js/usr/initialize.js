@@ -1,14 +1,18 @@
 "use strict";
 var socket;
 
+var histogram;
 var xScale, yScale;
+var xHistScale, yHistScale;
 var svg_width = 300;
 var svg_height = 300;
 var height, width;
+var histogramHeight, histogramWidth;
 var objective_function, bounds;
 var THREAD_RUNNING = false;
+var num_histogram_bins = 12;
 
-var transition = d3.transition().duration(500);
+var transition = d3.transition().duration(250);
 
 var PSO_param_keys = {
     "C1"            : "C1 (cognative constant)",
@@ -20,10 +24,10 @@ var PSO_param_keys = {
 // Init params
 var PSO_params = {
     "C1"            : 1.496180,          // cognative constant
-    "C2"            : 1.496180,          // social constant
+    "C2"            : 2.496180,          // social constant
     "W"             : 0.5,               // constant inertia weight (how much to weigh the previous velocity)
-    "maxiter"       : 10,
-    "num_agents"    : 20,
+    "maxiter"       : 20,
+    "num_agents"    : 50,
 }
 
 function resetPlots() {
@@ -99,6 +103,93 @@ function createPlot_1D() {
             .style("text-anchor", "end")
             .text("Y Value")
     // --------------------------------------------------------
+}
+
+
+function initializeHistogram(msg) {
+
+    d3.select("#histogram_svg").remove();
+
+    var data = msg.history;
+    var timestep = msg.time_i;
+
+    // set the dimensions and margins of the graph
+    var margin = {top: 50, right: 50, bottom: 50, left: 50};
+    histogramWidth = svg_width - margin.left - margin.right;
+    histogramHeight = 200 - margin.top - margin.bottom;
+
+    xHistScale = d3.scaleLinear()
+        .range([0, histogramWidth]);
+
+    yHistScale = d3.scaleLinear()
+        .range([histogramHeight, 0]);
+
+    xHistScale.domain(d3.extent(objective_function, function(d) { return d.x; })).nice();
+
+    // set the parameters for the histogram
+    histogram = d3.histogram()
+        .value(function(d) { return d.position[0]; })
+        .domain(xHistScale.domain())
+        .thresholds(xHistScale.ticks(num_histogram_bins));
+
+    // append the svg object to the body of the page
+    // append a 'group' element to 'svg'
+    // moves the 'group' element to the top left margin
+    var svg = d3.select("#histo_div").append("svg")
+        .attr("id", "histogram_svg")
+        .attr("width", histogramWidth + margin.left + margin.right)
+        .attr("height", histogramHeight + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform",
+              "translate(" + margin.left + "," + margin.top + ")");
+
+
+    // group the data for the bars
+    var bins = histogram(data);
+
+    // Scale the range of the data in the y domain
+    yHistScale.domain([0, d3.max(bins, function(d) { return d.length; })]);
+
+    // append the bar rectangles to the svg element
+    svg.selectAll("rect.histo_bar")
+        .data(bins)
+        .enter().append("rect")
+        .attr("class", "histo_bar")
+        .attr("x", 1)
+        .attr("transform", function(d) {
+            return "translate(" + xHistScale(d.x0) + "," + yHistScale(d.length) + ")";
+        })
+        .attr("width", function(d) { return xHistScale(d.x1) - xHistScale(d.x0) - 1 ; })
+        .attr("height", function(d) { return histogramHeight - yHistScale(d.length); });
+
+    // add the x Axis
+    svg.append("g")
+        .attr("transform", "translate(0," + histogramHeight + ")")
+        .call(d3.axisBottom(xHistScale));
+
+    // add the y Axis
+    svg.append("g")
+        .call(d3.axisLeft(yHistScale).ticks(5));
+}
+
+function updateHistogram(msg) {
+    var data = msg.history;
+    var timestep = msg.time_i;
+
+    // group the data for the bars
+    var bins = histogram(data);
+
+    // Scale the range of the data in the y domain
+    yHistScale.domain([0, d3.max(bins, function(d) { return d.length; })]);
+
+    d3.selectAll(".histo_bar")
+        .data(bins).transition().duration(500)
+        .attr("transform", function(d) {
+            return "translate(" + xHistScale(d.x0) + "," + yHistScale(d.length) + ")";
+        })
+        .attr("width", function(d) { return xHistScale(d.x1) - xHistScale(d.x0) - 1 ; })
+        .attr("height", function(d) { return histogramHeight - yHistScale(d.length); });
+
 }
 
 function initializePlot_1D(msg) {
@@ -420,10 +511,12 @@ function initializeSocket() {
     // socket.on('pso_init'), function(msg) {}
     socket.on('pso_init', function(msg) {
         initializePlot_1D(msg);
+        initializeHistogram(msg);
     });
 
     socket.on('pso_update', function(msg) {
         updatePlot_1D(msg);
+        updateHistogram(msg);
     });
 
     socket.on('pso_end', function(msg) {
