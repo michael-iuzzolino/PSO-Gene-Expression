@@ -38,6 +38,10 @@ def set_new_objective_function(message):
     global objective_string
     objective_string = message["new_objective"]
 
+    global bounds
+    bounds = (int(message["lower_bound"]), int(message["upper_bound"]))
+    print(bounds)
+
     potential_np_functions = ["sin", "cos", "exp"]
     for np_func in potential_np_functions:
         objective_string = objective_string.replace(np_func, "np.{}".format(np_func))
@@ -46,7 +50,7 @@ def set_new_objective_function(message):
     objective = lambda x : eval(objective_string)
 
     global objective_values
-    objective_values = [{"x" : x, "y" : objective(x)} for x in range(401)]
+    objective_values = [{"x" : x, "y" : objective(x)} for x in range(bounds[0], bounds[1])]
 
     socketio.emit("receive_objective_function",
         {

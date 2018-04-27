@@ -113,7 +113,8 @@ function createPlot() {
     var objective_g = pso_g.append("g").attr("id", "objective_g");
 
     xScale.domain(d3.extent(objective_function, function(d) { return d.x; })).nice();
-    yScale.domain([0, d3.max(objective_function, function(d) { return d.y; })]).nice();
+    yScale.domain(d3.extent(objective_function, function(d) { return d.y; })).nice();
+    // yScale.domain([0, d3.max(objective_function, function(d) { return d.y; })]).nice();
 
     // define the line
     var valueline = d3.line()
@@ -222,8 +223,6 @@ function endPlot(msg) {
 
     xScale.domain(d3.extent(data, function(d) { return d.position[0]; })).nice();
     yScale.domain(d3.extent(data, function(d) { return d.position[1]; })).nice();
-
-    updateAxis(pso_svg);
 
     pso_svg.selectAll(".dot")
         .data(data).transition(transition)

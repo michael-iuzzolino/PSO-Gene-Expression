@@ -113,15 +113,54 @@ function initializeControls() {
         .attr("class", "param_input_text")
         .attr("type", "text")
         .attr("name", "objective_function")
-        .attr("value", function() {
-            console.log(objective_string);
-            return "" + objective_string;
-        })
+        .attr("value", objective_string)
         .style("width", "300px")
         .on("change", function() {
-            console.log(objective_string);
-            console.log(this.value)
-            socket.emit('updateObjective', {"new_objective" : this.value});
+            socket.emit('updateObjective', {
+                "new_objective"     : this.value,
+                "lower_bound"       : bounds[0],
+                "upper_bound"       : bounds[1]
+            });
+        });
+    // -------------------------------------------------------
+
+    // Lower bound
+    // -------------------------------------------------------
+    var lower_bound_div = controlsDiv.append("div").attr("id", "lower_bound_div");
+
+    lower_bound_div.append("label").attr("class", "param_label").html("Lower Bound");
+    lower_bound_div.append("input")
+        .attr("class", "param_input_text")
+        .attr("type", "text")
+        .attr("name", "lower_bound")
+        .attr("value", bounds[0])
+        .style("width", "300px")
+        .on("change", function() {
+            socket.emit('updateObjective', {
+                "new_objective"     : objective_string,
+                "lower_bound"       : this.value,
+                "upper_bound"       : bounds[1]
+            });
+        });
+    // -------------------------------------------------------
+
+    // Upper bound
+    // -------------------------------------------------------
+    var upper_bound_div = controlsDiv.append("div").attr("id", "upper_bound_div");
+
+    upper_bound_div.append("label").attr("class", "param_label").html("Upper Bound");
+    upper_bound_div.append("input")
+        .attr("class", "param_input_text")
+        .attr("type", "text")
+        .attr("name", "upper_bound")
+        .attr("value", bounds[1])
+        .style("width", "300px")
+        .on("change", function() {
+            socket.emit('updateObjective', {
+                "new_objective"     : objective_string,
+                "lower_bound"       : bounds[0],
+                "upper_bound"       : this.value
+            });
         });
     // -------------------------------------------------------
 }
@@ -138,8 +177,9 @@ function initializeSocket() {
         objective_function = msg.objective_function;
         objective_string = msg.objective_string;
         bounds = msg.bounds;
+        console.log("Bounds: " + bounds);
 
-        console.log("objective_function:" + objective_string)
+        console.log("objective_function: " + objective_string)
         initializeControls();
         createPlot();
     });
