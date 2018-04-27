@@ -1,3 +1,4 @@
+import threading
 from threading import Lock
 
 import sys
@@ -14,68 +15,70 @@ from flask_socketio import SocketIO, emit, join_room, leave_room, close_room, ro
 sys.path.append('../modules')
 from Swarm import Swarm
 from Agent import Agent
+from helper import ThreadStopper
+
+from sklearn.ensemble import RandomForestRegressor
 
 thread = None
 thread_lock = Lock()
 
+bounds = (0, 400)
+objective = lambda x : abs((0.07*x - 10)**3 - 8*x + 500)
+objective_values = [{"x" : x, "y" : objective(x)} for x in range(401)]
+
 @socketio.on('connect', namespace='/pso')
 def pso_connect():
     print("Connected.")
-    # global thread
-    # with thread_lock:
-    #     if thread is None:
-    #         thread = socketio.start_background_task(target=background_thread)
 
+@socketio.on('get_objective_function', namespace='/pso')
+def get_objective_function(message):
+    # emit("receive_objective_function", data={"objective_function" : {"x" : objective_x, "y" : objective_y}})
+
+    socketio.emit("receive_objective_function",
+        {
+            "objective_function"    : objective_values,
+            "bounds"                : bounds
+        },
+        namespace='/pso'
+    )
 
 @socketio.on('runPSO', namespace='/pso')
-def initPSOparams(message):
+def initializePSO(message):
+    global thread_stopper
+    thread_stopper = ThreadStopper()
+    message["thread_stopper"] = thread_stopper
+    thread = threading.Thread(target=run_pso, kwargs=message)
+    thread.start()
+
+@socketio.on('stopPSO', namespace='/pso')
+def stopPSO(message):
+    print("Stopping PSO...")
     print(message)
-    run_pso(**message)
+    thread_stopper.stop()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', async_mode=socketio.async_mode)
 
 
 #--- MAIN ---------------------------------------------------------------------+
-def run_pso(C1, C2, W, maxiter, num_agents):
-
-    bounds = [(-100,100), (-100,100)]   # input bounds [(x1_min,x1_max),(x2_min,x2_max)...]
-
-    def objective_function(x):
-        error = 0.0
-        for x_i in x:
-            error += (x_i * x_i) - (10 * np.cos(2 * np.pi * x_i)) + 10
-        return error
+def run_pso(C1, C2, W, maxiter, num_agents, thread_stopper):
 
     #--- RUN ----------------------------------------------------------------------+
     swarm_params = {
-        "costFunc"      : objective_function,
-        "bounds"        : bounds,
-        "num_agents"    : num_agents,
-        "maxiter"       : maxiter,
-        "c1"            : C1,
-        "c2"            : C2,
-        "weight"        : W,
-        "Agent"         : Agent
+        "objective"                 : objective,
+        "bounds"                    : bounds,
+        "num_agents"                : num_agents,
+        "maxiter"                   : maxiter,
+        "c1"                        : C1,
+        "c2"                        : C2,
+        "weight"                    : W,
+        "Agent"                     : Agent,
+        "web_socket"                : socketio,
+        "socket_update_frequency"   : 1,
+        "thread_stopper"            : thread_stopper
     }
 
     pso_swarm = Swarm(**swarm_params)
     pso_swarm.run()
-
-    for i, history_i in enumerate(pso_swarm.swarm_position_history):
-        socket_address = "pso_init" if i == 0 else "pso_end" if (i == len(pso_swarm.swarm_position_history) - 1) else "pso_update"
-        socketio.emit(socket_address,
-            {
-                'time_i'    : i,
-                "history"   : [{
-                    "agent" : "agent_{}".format(i),
-                    "position" : [np.random.randint(-10, 10), np.random.randint(-10, 10)]
-                } for i in range(num_agents)]
-            },
-            namespace='/pso'
-        )
-        time.sleep(2)
-
-    return jsonify({"result" : True})
     #--- END ----------------------------------------------------------------------+

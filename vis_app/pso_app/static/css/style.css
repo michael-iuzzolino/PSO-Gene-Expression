@@ -4,7 +4,7 @@
 }
 
 .param_container {
-    width: 20px;
+    width: 200px;
     margin-left: 20px;
 }
 
@@ -12,6 +12,20 @@
     margin-top: 10px;
 }
 
+#stop_button {
+    margin-top: 10px;
+}
+
 #title_div {
     text-align: center;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2px;
+}
+
+.axis_label {
+    fill : "black";
 }
