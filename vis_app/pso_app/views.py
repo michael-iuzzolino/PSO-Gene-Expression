@@ -23,12 +23,39 @@ thread = None
 thread_lock = Lock()
 
 bounds = (0, 400)
-objective = lambda x : abs((0.07*x - 10)**3 - 8*x + 500)
+objective_string = "abs((0.07*x - 10)**3 - 8*x + 500)"
+objective = lambda x : eval(objective_string)
 objective_values = [{"x" : x, "y" : objective(x)} for x in range(401)]
 
 @socketio.on('connect', namespace='/pso')
 def pso_connect():
     print("Connected.")
+
+
+@socketio.on("updateObjective", namespace='/pso')
+def set_new_objective_function(message):
+
+    global objective_string
+    objective_string = message["new_objective"]
+
+    potential_np_functions = ["sin", "cos", "exp"]
+    for np_func in potential_np_functions:
+        objective_string = objective_string.replace(np_func, "np.{}".format(np_func))
+
+    global objective
+    objective = lambda x : eval(objective_string)
+
+    global objective_values
+    objective_values = [{"x" : x, "y" : objective(x)} for x in range(401)]
+
+    socketio.emit("receive_objective_function",
+        {
+            "objective_function"    : objective_values,
+            "objective_string"      : objective_string,
+            "bounds"                : bounds
+        },
+        namespace='/pso'
+    )
 
 @socketio.on('get_objective_function', namespace='/pso')
 def get_objective_function(message):
@@ -37,6 +64,7 @@ def get_objective_function(message):
     socketio.emit("receive_objective_function",
         {
             "objective_function"    : objective_values,
+            "objective_string"      : objective_string,
             "bounds"                : bounds
         },
         namespace='/pso'
