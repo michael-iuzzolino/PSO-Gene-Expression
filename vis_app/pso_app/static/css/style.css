@@ -33,3 +33,7 @@
 .axis_label {
     fill : "black";
 }
+
+#objective_div {
+    margin-top: 50px;
+}

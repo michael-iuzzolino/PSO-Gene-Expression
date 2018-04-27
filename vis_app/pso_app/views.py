@@ -37,6 +37,10 @@ def pso_connect():
 @socketio.on("updateObjective", namespace='/pso')
 def set_new_objective_function(message):
 
+    error = False
+
+    previous_objective_string = objective_string
+
     global objective_string
     objective_string = message["new_objective"]
 
@@ -44,22 +48,26 @@ def set_new_objective_function(message):
     bounds = (int(message["lower_bound"]), int(message["upper_bound"]))
     print(bounds)
 
-    # potential_np_functions = np.__dict__.keys()
-    # for np_func in potential_np_functions:
-    #     objective_string = objective_string.replace(np_func, "np.{}".format(np_func))
+    previous_objective = objective
+    try:
+        global objective
+        objective = lambda x : numexpr.evaluate(objective_string).item()
 
-    global objective
-    objective = lambda x : numexpr.evaluate(objective_string).item()
+        global objective_values
+        domain = np.linspace(bounds[0], bounds[1], 100)
+        objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
 
-    global objective_values
-    domain = np.linspace(bounds[0], bounds[1], 100)
-    objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
+    except:
+        error = True
+        objective = previous_objective
+        objective_string = previous_objective_string
 
     socketio.emit("receive_objective_function",
         {
             "objective_function"    : objective_values,
             "objective_string"      : objective_string,
-            "bounds"                : bounds
+            "bounds"                : bounds,
+            "error"                 : error
         },
         namespace='/pso'
     )

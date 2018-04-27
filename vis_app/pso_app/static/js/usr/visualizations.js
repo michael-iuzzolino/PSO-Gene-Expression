@@ -1,7 +1,7 @@
 
 function initializeHistogram(msg) {
 
-    d3.select("#histogram_svg").remove();
+    d3.select("#histogram_g").remove();
 
     var data = msg.history;
     var timestep = msg.time_i;
@@ -12,10 +12,10 @@ function initializeHistogram(msg) {
     histogramHeight = 200 - margin.top - margin.bottom;
 
     xHistScale = d3.scaleLinear()
-        .range([0, histogramWidth]);
+        .range([0, width]);
 
     yHistScale = d3.scaleLinear()
-        .range([histogramHeight, 0]);
+        .range([height, 0]);
 
     xHistScale.domain(d3.extent(objective_function, function(d) { return d.x; })).nice();
 
@@ -28,14 +28,7 @@ function initializeHistogram(msg) {
     // append the svg object to the body of the page
     // append a 'group' element to 'svg'
     // moves the 'group' element to the top left margin
-    var svg = d3.select("#histo_div").append("svg")
-        .attr("id", "histogram_svg")
-        .attr("width", histogramWidth + margin.left + margin.right)
-        .attr("height", histogramHeight + margin.top + margin.bottom)
-      .append("g")
-        .attr("transform",
-              "translate(" + margin.left + "," + margin.top + ")");
-
+    var histogram_g = d3.select("#pso_g").append("g").attr("id", "histogram_g");
 
     // group the data for the bars
     var bins = histogram(data);
@@ -44,7 +37,7 @@ function initializeHistogram(msg) {
     yHistScale.domain([0, d3.max(bins, function(d) { return d.length; })]);
 
     // append the bar rectangles to the svg element
-    svg.selectAll("rect.histo_bar")
+    histogram_g.selectAll("rect.histo_bar")
         .data(bins)
         .enter().append("rect")
         .attr("class", "histo_bar")
@@ -53,16 +46,8 @@ function initializeHistogram(msg) {
             return "translate(" + xHistScale(d.x0) + "," + yHistScale(d.length) + ")";
         })
         .attr("width", function(d) { return xHistScale(d.x1) - xHistScale(d.x0) - 1 ; })
-        .attr("height", function(d) { return histogramHeight - yHistScale(d.length); });
-
-    // add the x Axis
-    svg.append("g")
-        .attr("transform", "translate(0," + histogramHeight + ")")
-        .call(d3.axisBottom(xHistScale));
-
-    // add the y Axis
-    svg.append("g")
-        .call(d3.axisLeft(yHistScale).ticks(5));
+        .attr("height", function(d) { return height - yHistScale(d.length); })
+        .style("opacity", 0.4);
 }
 
 function updateHistogram(msg) {
@@ -81,8 +66,7 @@ function updateHistogram(msg) {
             return "translate(" + xHistScale(d.x0) + "," + yHistScale(d.length) + ")";
         })
         .attr("width", function(d) { return xHistScale(d.x1) - xHistScale(d.x0) - 1 ; })
-        .attr("height", function(d) { return histogramHeight - yHistScale(d.length); });
-
+        .attr("height", function(d) { return height - yHistScale(d.length); });
 }
 
 function createPlot() {
@@ -114,7 +98,6 @@ function createPlot() {
 
     xScale.domain(d3.extent(objective_function, function(d) { return d.x; })).nice();
     yScale.domain(d3.extent(objective_function, function(d) { return d.y; })).nice();
-    // yScale.domain([0, d3.max(objective_function, function(d) { return d.y; })]).nice();
 
     // define the line
     var valueline = d3.line()

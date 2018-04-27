@@ -63,9 +63,77 @@ function initializeControls() {
             .attr("name", param)
             .attr("value", PSO_params[param])
             .on("change", function() {
+                stopThread();
                 PSO_params[this.name] = parseFloat(this.value);
             });
     }
+
+
+
+    // Objective Function Input
+    // -------------------------------------------------------
+    var objective_div = controlsDiv.append("div").attr("id", "objective_div");
+
+    objective_div.append("label").attr("class", "param_label").html("Objective Function");
+    objective_div.append("input")
+        .attr("class", "param_input_text")
+        .attr("type", "text")
+        .attr("name", "objective_function")
+        .attr("value", objective_string)
+        .style("width", "300px")
+        .on("change", function() {
+            stopThread();
+            socket.emit('updateObjective', {
+                "new_objective"     : this.value,
+                "lower_bound"       : bounds[0],
+                "upper_bound"       : bounds[1]
+            });
+        });
+    // -------------------------------------------------------
+
+    // Lower bound
+    // -------------------------------------------------------
+    var lower_bound_div = controlsDiv.append("div").attr("id", "lower_bound_div");
+
+    lower_bound_div.append("label").attr("class", "param_label").html("Lower Bound");
+    lower_bound_div.append("input")
+        .attr("class", "param_input_text")
+        .attr("type", "text")
+        .attr("name", "lower_bound")
+        .attr("value", bounds[0])
+        .style("width", "300px")
+        .on("change", function() {
+            stopThread();
+            socket.emit('updateObjective', {
+                "new_objective"     : objective_string,
+                "lower_bound"       : this.value,
+                "upper_bound"       : bounds[1]
+            });
+        });
+    // -------------------------------------------------------
+
+    // Upper bound
+    // -------------------------------------------------------
+    var upper_bound_div = controlsDiv.append("div").attr("id", "upper_bound_div");
+
+    upper_bound_div.append("label").attr("class", "param_label").html("Upper Bound");
+    upper_bound_div.append("input")
+        .attr("class", "param_input_text")
+        .attr("type", "text")
+        .attr("name", "upper_bound")
+        .attr("value", bounds[1])
+        .style("width", "300px")
+        .on("change", function() {
+            stopThread();
+
+            socket.emit('updateObjective', {
+                "new_objective"     : objective_string,
+                "lower_bound"       : bounds[0],
+                "upper_bound"       : this.value
+            });
+        });
+    // -------------------------------------------------------
+
 
     // Run Button
     // -------------------------------------------------------
@@ -97,72 +165,16 @@ function initializeControls() {
                 console.log("No threads running.");
                 return;
             }
-            resetRunButton();
-            socket.emit('stopPSO', {"stop" : true});
-            THREAD_RUNNING = false;
+            stopThread();
         });
 
     // -------------------------------------------------------
+}
 
-    // Objective Function Input
-    // -------------------------------------------------------
-    var objective_div = controlsDiv.append("div").attr("id", "objective_div");
-
-    objective_div.append("label").attr("class", "param_label").html("Objective Function");
-    objective_div.append("input")
-        .attr("class", "param_input_text")
-        .attr("type", "text")
-        .attr("name", "objective_function")
-        .attr("value", objective_string)
-        .style("width", "300px")
-        .on("change", function() {
-            socket.emit('updateObjective', {
-                "new_objective"     : this.value,
-                "lower_bound"       : bounds[0],
-                "upper_bound"       : bounds[1]
-            });
-        });
-    // -------------------------------------------------------
-
-    // Lower bound
-    // -------------------------------------------------------
-    var lower_bound_div = controlsDiv.append("div").attr("id", "lower_bound_div");
-
-    lower_bound_div.append("label").attr("class", "param_label").html("Lower Bound");
-    lower_bound_div.append("input")
-        .attr("class", "param_input_text")
-        .attr("type", "text")
-        .attr("name", "lower_bound")
-        .attr("value", bounds[0])
-        .style("width", "300px")
-        .on("change", function() {
-            socket.emit('updateObjective', {
-                "new_objective"     : objective_string,
-                "lower_bound"       : this.value,
-                "upper_bound"       : bounds[1]
-            });
-        });
-    // -------------------------------------------------------
-
-    // Upper bound
-    // -------------------------------------------------------
-    var upper_bound_div = controlsDiv.append("div").attr("id", "upper_bound_div");
-
-    upper_bound_div.append("label").attr("class", "param_label").html("Upper Bound");
-    upper_bound_div.append("input")
-        .attr("class", "param_input_text")
-        .attr("type", "text")
-        .attr("name", "upper_bound")
-        .attr("value", bounds[1])
-        .style("width", "300px")
-        .on("change", function() {
-            socket.emit('updateObjective', {
-                "new_objective"     : objective_string,
-                "lower_bound"       : bounds[0],
-                "upper_bound"       : this.value
-            });
-        });
-    // -------------------------------------------------------
+function stopThread() {
+    resetRunButton();
+    socket.emit('stopPSO', {"stop" : true});
+    THREAD_RUNNING = false;
 }
 
 function initializeSocket() {
@@ -174,6 +186,10 @@ function initializeSocket() {
     });
 
     socket.on('receive_objective_function', function(msg) {
+        var error = msg.error;
+        if (error) {
+            alert("Error creating objective! Returning to old objective function.");
+        }
         objective_function = msg.objective_function;
         objective_string = msg.objective_string;
         bounds = msg.bounds;
