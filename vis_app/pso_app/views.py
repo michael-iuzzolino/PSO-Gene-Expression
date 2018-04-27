@@ -4,6 +4,7 @@ from threading import Lock
 import sys
 import os
 import numpy as np
+import numexpr
 import json
 import time
 
@@ -24,8 +25,9 @@ thread_lock = Lock()
 
 bounds = (0, 400)
 objective_string = "abs((0.07*x - 10)**3 - 8*x + 500)"
-objective = lambda x : eval(objective_string)
-objective_values = [{"x" : x, "y" : objective(x)} for x in range(401)]
+objective = lambda x : numexpr.evaluate(objective_string).item()
+domain = np.linspace(bounds[0], bounds[1], 100)
+objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
 
 @socketio.on('connect', namespace='/pso')
 def pso_connect():
@@ -42,15 +44,16 @@ def set_new_objective_function(message):
     bounds = (int(message["lower_bound"]), int(message["upper_bound"]))
     print(bounds)
 
-    potential_np_functions = ["sin", "cos", "exp"]
-    for np_func in potential_np_functions:
-        objective_string = objective_string.replace(np_func, "np.{}".format(np_func))
+    # potential_np_functions = np.__dict__.keys()
+    # for np_func in potential_np_functions:
+    #     objective_string = objective_string.replace(np_func, "np.{}".format(np_func))
 
     global objective
-    objective = lambda x : eval(objective_string)
+    objective = lambda x : numexpr.evaluate(objective_string).item()
 
     global objective_values
-    objective_values = [{"x" : x, "y" : objective(x)} for x in range(bounds[0], bounds[1])]
+    domain = np.linspace(bounds[0], bounds[1], 100)
+    objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
 
     socketio.emit("receive_objective_function",
         {
