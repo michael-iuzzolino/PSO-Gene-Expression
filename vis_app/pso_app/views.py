@@ -23,10 +23,11 @@ from sklearn.ensemble import RandomForestRegressor
 thread = None
 thread_lock = Lock()
 
-bounds = (0, 400)
+bounds = [(0, 400)]
 objective_string = "abs((0.07*x - 10)**3 - 8*x + 500)"
+previous_objective_string = objective_string
 objective = lambda x : numexpr.evaluate(objective_string).item()
-domain = np.linspace(bounds[0], bounds[1], 100)
+domain = np.linspace(bounds[0][0], bounds[0][1], 100)
 objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
 
 @socketio.on('connect', namespace='/pso')
@@ -39,34 +40,32 @@ def set_new_objective_function(message):
 
     error = False
 
-    previous_objective_string = objective_string
-
     global objective_string
     objective_string = message["new_objective"]
 
     global bounds
-    bounds = (int(message["lower_bound"]), int(message["upper_bound"]))
-    print(bounds)
+    bounds = [(int(message["lower_bound"]), int(message["upper_bound"]))]
 
-    previous_objective = objective
     try:
         global objective
         objective = lambda x : numexpr.evaluate(objective_string).item()
 
         global objective_values
-        domain = np.linspace(bounds[0], bounds[1], 100)
+        domain = np.linspace(bounds[0][0], bounds[0][1], 100)
         objective_values = [{"x" : x, "y" : objective(x)} for x in domain]
 
     except:
         error = True
-        objective = previous_objective
         objective_string = previous_objective_string
+
+        global objective
+        objective = lambda x : numexpr.evaluate(objective_string).item()
 
     socketio.emit("receive_objective_function",
         {
             "objective_function"    : objective_values,
             "objective_string"      : objective_string,
-            "bounds"                : bounds,
+            "bounds"                : bounds[0],
             "error"                 : error
         },
         namespace='/pso'
@@ -74,13 +73,11 @@ def set_new_objective_function(message):
 
 @socketio.on('get_objective_function', namespace='/pso')
 def get_objective_function(message):
-    # emit("receive_objective_function", data={"objective_function" : {"x" : objective_x, "y" : objective_y}})
-
     socketio.emit("receive_objective_function",
         {
             "objective_function"    : objective_values,
             "objective_string"      : objective_string,
-            "bounds"                : bounds
+            "bounds"                : bounds[0]
         },
         namespace='/pso'
     )
@@ -109,17 +106,21 @@ def run_pso(C1, C2, W, maxiter, num_agents, thread_stopper):
 
     #--- RUN ----------------------------------------------------------------------+
     swarm_params = {
-        "objective"                 : objective,
-        "bounds"                    : bounds,
+        "Agent"                     : Agent,
         "num_agents"                : num_agents,
         "maxiter"                   : maxiter,
-        "c1"                        : C1,
-        "c2"                        : C2,
-        "weight"                    : W,
-        "Agent"                     : Agent,
-        "web_socket"                : socketio,
-        "socket_update_frequency"   : 1,
-        "thread_stopper"            : thread_stopper
+        "agent_params"                  : {
+            "objective"                 : objective,
+            "bounds"                    : bounds,
+            "c1"                        : C1,
+            "c2"                        : C2,
+            "weight"                    : W
+        },
+        "socket_params"                 : {
+            "web_socket"                : socketio,
+            "socket_update_frequency"   : 1,
+            "thread_stopper"            : thread_stopper
+        }
     }
 
     pso_swarm = Swarm(**swarm_params)

@@ -23,9 +23,9 @@ var PSO_param_keys = {
 }
 // Init params
 var PSO_params = {
-    "C1"            : 1.496180,          // cognative constant
-    "C2"            : 2.496180,          // social constant
-    "W"             : 0.5,               // constant inertia weight (how much to weigh the previous velocity)
+    "C1"            : 1.496180,           // cognative constant
+    "C2"            : 2.496180,           // social constant
+    "W"             : 0.25,               // constant inertia weight (how much to weigh the previous velocity)
     "maxiter"       : 20,
     "num_agents"    : 50,
 }
