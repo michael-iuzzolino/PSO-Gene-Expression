@@ -3,14 +3,16 @@ import numpy as np
 from modules.Swarm import Swarm
 from modules.DataHandler import DataHandler
 
-num_agents = 20
-maxiter = 5
+num_agents = 100
+maxiter = 20
 C1 = 1.49
 C2 = 1.49
-W = 0.25
+W = 0.55
 
-DATA_LIMIT = 500
+DATA_LIMIT = 1000
 PCA_INIT = True
+
+PLOT_GENE_ACTIVITY = True
 
 def main():
     data = DataHandler()
@@ -26,7 +28,8 @@ def main():
             "weight"                    : W,
             "data"                      : data,
             "init_type"                 : "pca" if PCA_INIT else "uniform_random"
-        }
+        },
+        "plot_gene_activity"            : PLOT_GENE_ACTIVITY
     }
 
     pso_swarm = Swarm(**swarm_params)
