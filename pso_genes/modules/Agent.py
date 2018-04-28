@@ -2,8 +2,9 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
 class Agent:
-    def __init__(self, id, c1, c2, weight, data):
+    def __init__(self, id, c1, c2, weight, data, init_type="uniform_random"):
         self.id = id
+        self.init_type = init_type
 
         self.c1 = c1                    # cognative constant
         self.c2 = c2                    # social constant
@@ -31,7 +32,13 @@ class Agent:
 
         for gene_i in range(self.gene_dimensions):
             self.current_velocity[gene_i] = np.random.uniform(-1, 1)
-            self.current_position[gene_i] = 1 if np.random.uniform() > 0.5 else 0
+
+        if self.init_type == "uniform_random":
+            for gene_i in range(self.gene_dimensions):
+                self.current_position[gene_i] = 1 if np.random.uniform() > 0.5 else 0
+
+        elif self.init_type == "PCA":
+            self.current_position = self.data.agent_initialization(self.id)
 
 
     def evaluate(self):

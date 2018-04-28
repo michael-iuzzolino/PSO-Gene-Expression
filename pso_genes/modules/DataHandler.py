@@ -8,7 +8,7 @@ class DataHandler(object):
         self.columns_metadata_path = "{}/genes_matrix_csv/columns_metadata.csv".format(data_dir)
         self.rows_metadata_path = "{}/genes_matrix_csv/rows_metadata.csv".format(data_dir)
 
-    def load(self, limit=-1):
+    def load(self, limit=-1, PCA_init=False, num_agents=None):
         print("Loading Data...")
 
         # Load Expression Data
@@ -65,7 +65,27 @@ class DataHandler(object):
 
         # Limit gene list
         self.gene_list = self.gene_list[:limit]
+
+
+        # PCA init
+        if PCA_init:
+            print("Running PCA...")
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=num_agents)
+            pca.fit(self.raw_expression_data.T)
+            comps = pca.components_
+            comps_thresholded = np.zeros_like(comps)
+            for row_i, row in enumerate(comps):
+                row_mean = np.mean(row)
+                comps_thresholded[row_i] = np.abs(row) > row_mean
+
+            self.agent_initializations = comps_thresholded.astype(np.int)
+            print("Finished initializing agent positions.")
+
         print("Load complete.")
+
+    def agent_initialization(self, agent_id):
+        return self.agent_initializations[agent_id]
 
     def _encode_data(self, col_data):
         encoded_values = []

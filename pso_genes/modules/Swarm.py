@@ -42,4 +42,6 @@ class Swarm():
                 agent_i.update_position()
 
         # print final results
+        print("\n\n")
+        print("Finished PSO!")
         print('GLOBAL -- Best Position: {}, Best Error: {}'.format(self.best_global_position, self.best_global_error))

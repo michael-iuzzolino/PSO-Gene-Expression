@@ -4,16 +4,17 @@ from modules.Swarm import Swarm
 from modules.DataHandler import DataHandler
 
 num_agents = 20
-maxiter = 10
+maxiter = 40
 C1 = 1.49
 C2 = 1.49
 W = 0.25
 
-DATA_LIMIT = 100
+DATA_LIMIT = 500
+PCA_INIT = True
 
 def main():
     data = DataHandler()
-    data.load(DATA_LIMIT)
+    data.load(DATA_LIMIT, PCA_INIT, num_agents)
 
     #--- RUN ----------------------------------------------------------------------+
     swarm_params = {
@@ -23,7 +24,8 @@ def main():
             "c1"                        : C1,
             "c2"                        : C2,
             "weight"                    : W,
-            "data"                      : data
+            "data"                      : data,
+            "init_type"                 : "pca" if PCA_INIT else "uniform_random"
         }
     }
 
