@@ -1,47 +1,80 @@
 import numpy as np
-
-random_initial_position = lambda boundaries : [np.random.uniform(boundaries[0][0], boundaries[0][1]), np.random.uniform(boundaries[0][0], boundaries[0][1])]
+import time
 
 class Swarm():
-    def __init__(self, costFunc, bounds, num_agents, maxiter, c1, c2, weight, Agent):
-        self.err_best_g = -1                   # best error for group
-        self.pos_best_g = []                   # best position for group
+    def __init__(self, Agent, num_agents, maxiter, agent_params, socket_params):
 
+        self.num_agents = num_agents
         self.maxiter = maxiter
-        self.cost_function = costFunc
-        self.bounds = bounds
 
-        # establish the swarm
-        self.swarm = [Agent(random_initial_position(self.bounds), c1, c2, weight, i) for i in range(num_agents)]
+        # Global best errors and positions
+        self.best_global_error      = -1                     # best error for group
+        self.best_global_position   = []                     # best position for group
 
-        self.swarm_position_history = []
+        # Init socket
+        self._init_socket_params(**socket_params)
+
+        # Create the swarm
+        self._init_swarm(Agent, agent_params)
+
+    def _init_socket_params(self, web_socket, socket_update_frequency, thread_stopper):
+        self.web_socket = web_socket
+        self.socket_update_frequency = socket_update_frequency
+        self.thread_stopper = thread_stopper
+
+    def _init_swarm(self, Agent, agent_params):
+        self.swarm = [Agent(agent_i, **agent_params) for agent_i in range(self.num_agents)]
+
+    def publish_to_websocket(self, timestep_i):
+
+        socket_address = "pso_init" if timestep_i == 0 else "pso_end" if timestep_i == self.maxiter-1 else "pso_update"
+
+        agent_histories_i = []
+        for agent_i in self.swarm:
+            agent_histories_i.append({
+                "agent"     : agent_i.id,
+                "position"  : [agent_i.current_position, agent_i.current_error]
+            })
+
+        self.web_socket.emit(socket_address,
+            {
+                'time_i'    : timestep_i,
+                "history"   : agent_histories_i,
+                "swarm"     : {
+                    "best_position" : self.best_global_position,
+                    "best_error"    : self.best_global_error
+                }
+            },
+            namespace='/pso'
+        )
+
+        time.sleep(self.socket_update_frequency)
 
     def run(self):
 
         # begin optimization loop
-        for _ in range(self.maxiter):
+        for timestep_i in range(self.maxiter):
+
+            if self.thread_stopper.stopped:
+                print("Exiting!")
+                break
+
             # cycle through particles in swarm and evaluate fitness
-            agent_histories_i = []
             for agent_i in self.swarm:
-                agent_i.evaluate(self.cost_function)
+                agent_i.evaluate()
 
                 # determine if current particle is the best (globally)
-                if agent_i.err_i < self.err_best_g or self.err_best_g == -1:
-                    self.pos_best_g = list(agent_i.position_i)
-                    self.err_best_g = float(agent_i.err_i)
-
-                agent_histories_i.append({
-                    "agent_id" : agent_i.id,
-                    "position" : agent_i.position_i
-                })
+                if agent_i.current_error < self.best_global_error or self.best_global_error == -1:
+                    self.best_global_position = agent_i.current_position
+                    self.best_global_error = float(agent_i.current_error)
 
             # Update position history
-            self.swarm_position_history.append(agent_histories_i)
+            self.publish_to_websocket(timestep_i)
 
-            # cycle through swarm and update velocities and position
+            # Update agent positions and velocities
             for agent_i in self.swarm:
-                agent_i.update_velocity(self.pos_best_g)
-                agent_i.update_position(self.bounds)
+                agent_i.update_velocity(self.best_global_position)
+                agent_i.update_position()
 
         # print final results
-        print('GLOBAL -- Best Position: {}, Best Error: {}'.format(self.pos_best_g, self.err_best_g))
+        print('GLOBAL -- Best Position: {}, Best Error: {}'.format(self.best_global_position, self.best_global_error))
