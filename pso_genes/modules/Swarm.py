@@ -24,7 +24,7 @@ class Swarm():
         # begin optimization loop
         for timestep_i in range(self.maxiter):
 
-            sys.stdout.write("\r{} / {} -- Best Error: {} -- Best Position: {}".format(timestep_i, self.maxiter, self.best_global_error, self.best_global_position))
+            sys.stdout.write("\r{} / {} -- Best Error: {}".format(timestep_i, self.maxiter, self.best_global_error))
             sys.stdout.flush()
 
             # cycle through particles in swarm and evaluate fitness
@@ -44,4 +44,9 @@ class Swarm():
         # print final results
         print("\n\n")
         print("Finished PSO!")
-        print('GLOBAL -- Best Position: {}, Best Error: {}'.format(self.best_global_position, self.best_global_error))
+        print('GLOBAL -- Best Error: {}'.format(self.best_global_error))
+        print("Best positions: ")
+        for gene_i, gene_state in enumerate(self.best_global_position):
+            gene_name = self.swarm[0].data.gene_list[gene_i]
+            gene_state_str = "on" if gene_state else "off"
+            print("{} : {}".format(gene_name, gene_state_str))

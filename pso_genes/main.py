@@ -4,7 +4,7 @@ from modules.Swarm import Swarm
 from modules.DataHandler import DataHandler
 
 num_agents = 20
-maxiter = 40
+maxiter = 5
 C1 = 1.49
 C2 = 1.49
 W = 0.25
