@@ -6,7 +6,7 @@ from modules.DataHandler import DataHandler
 TESTING = False
 
 MAX_EPOCHS = 5 if TESTING else 50
-NUM_GENES = 10 if TESTING else 150
+NUM_GENES = 10 if TESTING else 200
 
 # Params to tune
 C1 = 2          # 1.49445

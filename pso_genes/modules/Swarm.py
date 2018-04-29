@@ -41,8 +41,6 @@ class Swarm():
                     print("\n")
                     print("\n")
 
-
-
                     num_genes = history.shape[0]
                     num_cols = 10
                     num_rows = int(np.ceil(num_genes / float(num_cols)))
@@ -57,21 +55,24 @@ class Swarm():
                         "linewidths"    : 1.5,
                         "annot"         : reshaped_global_gene_names,
                         "fmt"           : '',
-                        "cbar"          : True if history_i == 0 and not cbar_plotted else False,   # Prevents multiple cbar prints
-                        "cbar_kws"      : {
-                            "ticks" : [0.0, 1.0],
-                            "label" : "OFF / ON"
-                        }
+                        "cbar"          : False if cbar_plotted else True
                     }
-                    sns.heatmap(reshaped_global_positions, **plot_params)
+                    ax = sns.heatmap(reshaped_global_positions, **plot_params)
+
+
+                    if not cbar_plotted:
+                        cbar = ax.collections[0].colorbar
+                        cbar.set_ticks([0.25, 0.75])
+                        cbar.set_ticklabels(["OFF", "ON"])
+
+                        cbar_plotted = True
+
+
                     plt.title("Timestep: {} / {} \n Best Error: {:0.4f}".format(history_i+1, len(self.best_global_position_history), best_error_i))
                     plt.axis('off')
                     plt.pause(1)
                     plt.cla()
 
-                    # Prevents multiple cbar prints
-                    if history_i == 0:
-                        cbar_plotted = True
 
 
         except KeyboardInterrupt:
