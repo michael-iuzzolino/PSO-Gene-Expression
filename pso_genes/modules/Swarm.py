@@ -8,10 +8,10 @@ import seaborn as sns
 from modules.Agent import Agent
 
 class Swarm():
-    def __init__(self, num_agents, maxiter, agent_params, plot_gene_activity):
+    def __init__(self, num_agents, max_epochs, agent_params, plot_gene_activity):
 
         self.num_agents = num_agents
-        self.maxiter = maxiter
+        self.max_epochs = max_epochs
         self.plot_gene_activity = plot_gene_activity
 
         # Global best errors and positions
@@ -20,6 +20,7 @@ class Swarm():
 
         self.best_global_error_history = []
         self.best_global_position_history = []
+        self.best_global_feature_importances_history = []
 
         # Create the swarm
         self._init_swarm(agent_params)
@@ -28,38 +29,59 @@ class Swarm():
         self.swarm = [Agent(agent_i, **agent_params) for agent_i in range(self.num_agents)]
 
     def plot(self):
+        cbar_plotted = False # Prevents multiple cbar prints
         try:
             while True:
-                for history_i, (history, best_error_i) in enumerate(zip(self.best_global_position_history, self.best_global_error_history)):
+                for history_i, (history, best_error_i, best_feature_importance) in enumerate(zip(self.best_global_position_history, self.best_global_error_history, self.best_global_feature_importances_history)):
+                    print("\n")
+                    print("History {}".format(history_i+1))
+                    print("Feature importances")
+                    for key, val in best_feature_importance.items():
+                        print("\t{} : {}".format(key, val))
+                    print("\n")
+                    print("\n")
+
+
+
                     num_genes = history.shape[0]
                     num_cols = 10
                     num_rows = int(np.ceil(num_genes / float(num_cols)))
                     reshaped_global_positions = history.reshape(num_rows, num_cols)
 
-                    gene_names = np.array(self.swarm[0].data.gene_list)
-                    reshaped_global_gene_names = gene_names.reshape(num_rows, num_cols)
+                    gene_names = self.swarm[0].data.gene_list
+
+                    reshaped_global_gene_names = np.array(gene_names).reshape(num_rows, num_cols)
 
                     plot_params = {
                         "cmap"          : ListedColormap(["#ffcccc", "#99ff99"]),
                         "linewidths"    : 1.5,
                         "annot"         : reshaped_global_gene_names,
                         "fmt"           : '',
-                        "cbar"          : False
+                        "cbar"          : True if history_i == 0 and not cbar_plotted else False,   # Prevents multiple cbar prints
+                        "cbar_kws"      : {
+                            "ticks" : [0.0, 1.0],
+                            "label" : "OFF / ON"
+                        }
                     }
                     sns.heatmap(reshaped_global_positions, **plot_params)
-                    plt.title("Timestep: {} / {} \n Best Error: {:0.4f}".format(history_i, len(self.best_global_position_history), best_error_i))
+                    plt.title("Timestep: {} / {} \n Best Error: {:0.4f}".format(history_i+1, len(self.best_global_position_history), best_error_i))
                     plt.axis('off')
                     plt.pause(1)
                     plt.cla()
+
+                    # Prevents multiple cbar prints
+                    if history_i == 0:
+                        cbar_plotted = True
+
 
         except KeyboardInterrupt:
             print("Exiting")
 
     def run(self):
         # begin optimization loop
-        for timestep_i in range(self.maxiter):
+        for timestep_i in range(self.max_epochs):
 
-            sys.stdout.write("\r{} / {} -- Best Error: {}".format(timestep_i, self.maxiter, self.best_global_error))
+            sys.stdout.write("\r{} / {} -- Best Error: {}".format(timestep_i, self.max_epochs, self.best_global_error))
             sys.stdout.flush()
 
             # cycle through particles in swarm and evaluate fitness
@@ -70,6 +92,7 @@ class Swarm():
                 if agent_i.current_error < self.best_global_error or self.best_global_error == -1:
                     self.best_global_position = agent_i.current_position
                     self.best_global_error = float(agent_i.current_error)
+                    self.best_global_feature_importances = agent_i.full_feature_importances
 
             # Update agent positions and velocities
             for agent_i in self.swarm:
@@ -79,6 +102,7 @@ class Swarm():
             # Store timestep global best
             self.best_global_error_history.append(self.best_global_error)
             self.best_global_position_history.append(self.best_global_position)
+            self.best_global_feature_importances_history.append(self.best_global_feature_importances)
 
         if self.plot_gene_activity:
             self.plot()

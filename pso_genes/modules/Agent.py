@@ -2,12 +2,14 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
 class Agent:
-    def __init__(self, id, c1, c2, weight, data, init_type="uniform_random"):
+    def __init__(self, id, c1, c2, v_min, v_max, weight, data, init_type="uniform_random"):
         self.id = id
         self.init_type = init_type
 
         self.c1 = c1                    # cognative constant
         self.c2 = c2                    # social constant
+        self.v_min = v_min
+        self.v_max = v_max
         self.weight = weight            # Momentum
         self.data = data
 
@@ -18,6 +20,8 @@ class Agent:
         self.current_position = []          # particle position
         self.current_velocity = []          # particle velocity
         self.current_error = -1             # error individual
+
+        self.feature_importances = None
 
         # Individual History
         self.best_position = []            # best position individual
@@ -31,7 +35,7 @@ class Agent:
         self.current_position = np.zeros(self.gene_dimensions)
 
         for gene_i in range(self.gene_dimensions):
-            self.current_velocity[gene_i] = np.random.uniform(-1, 1)
+            self.current_velocity[gene_i] = np.random.uniform(self.v_min, self.v_max)
 
         if self.init_type == "uniform_random":
             for gene_i in range(self.gene_dimensions):
@@ -40,9 +44,30 @@ class Agent:
         elif self.init_type == "PCA":
             self.current_position = self.data.agent_initialization(self.id)
 
+    def _calculate_importances(self, active_gene_indices):
+        self.feature_importances = self.random_forest.feature_importances_
+
+        num_active_genes = active_gene_indices[0].shape[0]
+        active_gene_names = np.array(self.data.gene_list)[active_gene_indices]
+
+        self.full_feature_importances = {}
+
+        # Gene importances
+        gene_importances = { gene_name : self.feature_importances[gene_i] for gene_i, gene_name in enumerate(active_gene_names)}
+        for key, val in gene_importances.items():
+            self.full_feature_importances[key] = val
+
+        # Other importances
+        other_importances = {}
+        starting_index = num_active_genes
+        for key, val in self.data.encoding_sizes.items():
+            other_importances[key] = np.sum(self.feature_importances[starting_index:starting_index+val])
+            starting_index += val
+
+        for key, val in other_importances.items():
+            self.full_feature_importances[key] = val
 
     def evaluate(self):
-        self.current_error = 0
 
         # # DEBUGGING
         # print("Current Position")
@@ -60,6 +85,7 @@ class Agent:
             self.random_forest = RandomForestRegressor(oob_score=True)
             self.random_forest.fit(X, y)
             self.current_error = self.random_forest.oob_score_
+            self._calculate_importances(active_gene_indices)
 
         # # DEBUGGING
         # print("Error: {}".format(self.current_error))
@@ -69,6 +95,7 @@ class Agent:
         if self.current_error < self.best_error or self.best_error == -1:
             self.best_position = self.current_position
             self.best_error = self.current_error
+
 
     def update_velocity(self, best_global_position):
         new_velocities = []
