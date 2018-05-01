@@ -3,7 +3,7 @@ import numpy as np
 from modules.Swarm import Swarm
 from modules.DataHandler import DataHandler
 
-TESTING = False
+TESTING = True
 
 MAX_EPOCHS = 5 if TESTING else 50
 NUM_GENES = 10 if TESTING else 200
