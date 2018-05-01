@@ -5,8 +5,9 @@ from modules.DataHandler import DataHandler
 
 TESTING = True
 
-MAX_EPOCHS = 5 if TESTING else 50
-NUM_GENES = 10 if TESTING else 200
+MAX_EPOCHS = 50 if TESTING else 50
+NUM_GENES = 100 if TESTING else 200
+NUM_AGENTS = 100 # Set to < 0 for auto-scaling (set num agents = 10% of num genes)
 
 # Params to tune
 C1 = 2          # 1.49445
@@ -18,9 +19,20 @@ VMAX = 4
 PCA_INIT = False
 
 PLOT_GENE_ACTIVITY = True
+PLOT_GENE_VARIABILITY_ON_LOAD = False
+
+TOP_K_VARIABLE_GENES = 10 # Set the number of genes able to select from for setting target
+
+
 
 def main():
-    data = DataHandler()
+
+    data_handler_params = {
+        "num_agents"                : NUM_AGENTS,
+        "top_k_variable_genes"      : TOP_K_VARIABLE_GENES,
+        "show_variability_plot"     : PLOT_GENE_VARIABILITY_ON_LOAD
+    }
+    data = DataHandler(**data_handler_params)
     data.load(NUM_GENES, PCA_INIT)
 
     #--- RUN ----------------------------------------------------------------------+

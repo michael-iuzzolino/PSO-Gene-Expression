@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 
 class DataHandler(object):
-    def __init__(self, show_variability_plot=False):
+    def __init__(self, num_agents, top_k_variable_genes=10, show_variability_plot=False):
         self.data_dir = "../data"
         self.expression_matrix_path = "{}/genes_matrix_csv/expression_matrix.csv".format(self.data_dir)
         self.columns_metadata_path = "{}/genes_matrix_csv/columns_metadata.csv".format(self.data_dir)
         self.rows_metadata_path = "{}/genes_matrix_csv/rows_metadata.csv".format(self.data_dir)
         self.stats_path = "{}/genes_matrix_expression_variability.h5".format(self.data_dir)
 
-        self.top_k_variable_genes = 10
+        self.num_agents = num_agents
+        self.scale_num_agents = True if num_agents < 0 else False
+        self.top_k_variable_genes = top_k_variable_genes
         self.show_variability_plot = show_variability_plot
 
     def _get_genes_by_expression_variability(self, raw_expression_df):
@@ -128,8 +130,6 @@ class DataHandler(object):
             try:
                 selected_gene_input = int(raw_input("Select gene: "))
                 selected_gene = self.gene_expression_variability_high_to_low[selected_gene_input-1]["gene_symbol"]
-                print("Selected Gene: {}".format(selected_gene))
-
                 target_gene_index = self.gene_list.index(selected_gene)
                 self.target_gene = self.gene_list[target_gene_index]
                 print("Target gene: {}".format(self.target_gene))
@@ -179,7 +179,8 @@ class DataHandler(object):
         self.gene_list = self.gene_list[:num_genes]
         self.num_genes = len(self.gene_list)
 
-        self.num_agents = int(self.num_genes * 0.10) # Set the num agents to 1/10th the number of genes
+        if self.scale_num_agents:
+            self.num_agents = int(self.num_genes * 0.10) # Set the num agents to 1/10th the number of genes
 
         # PCA init
         if PCA_init:
