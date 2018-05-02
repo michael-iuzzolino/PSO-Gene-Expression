@@ -2,9 +2,8 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
 class Agent:
-    def __init__(self, id, c1, c2, v_min, v_max, weight, data, init_type="uniform_random"):
+    def __init__(self, id, c1, c2, v_min, v_max, weight, data):
         self.id = id
-        self.init_type = init_type
 
         self.c1 = c1                    # cognative constant
         self.c2 = c2                    # social constant
@@ -37,18 +36,14 @@ class Agent:
         for gene_i in range(self.gene_dimensions):
             self.current_velocity[gene_i] = np.random.uniform(self.v_min, self.v_max)
 
-        if self.init_type == "uniform_random":
-            for gene_i in range(self.gene_dimensions):
-                self.current_position[gene_i] = 1 if np.random.uniform() > 0.5 else 0
-
-        elif self.init_type == "PCA":
-            self.current_position = self.data.agent_initialization(self.id)
+        for gene_i in range(self.gene_dimensions):
+            self.current_position[gene_i] = 1 if np.random.uniform() > 0.5 else 0
 
     def _calculate_importances(self, active_gene_indices):
         self.feature_importances = self.random_forest.feature_importances_
 
         num_active_genes = active_gene_indices[0].shape[0]
-        active_gene_names = np.array(self.data.gene_list)[active_gene_indices]
+        active_gene_names = np.array(self.data.gene_name_list)[active_gene_indices]
 
         self.full_feature_importances = {}
 
@@ -92,7 +87,7 @@ class Agent:
         # raw_input("")
 
         # check to see if the current position is an individual best
-        if self.current_error < self.best_error or self.best_error == -1:
+        if (self.current_error < self.best_error and self.current_error > 0) or self.best_error == -1:
             self.best_position = self.current_position
             self.best_error = self.current_error
 

@@ -9,7 +9,7 @@ from modules.Agent import Agent
 
 class Swarm():
     def __init__(self, num_agents, max_epochs, agent_params, plot_gene_activity):
-
+        print("Creating swarm with {} agents...".format(num_agents))
         self.num_agents = num_agents
         self.max_epochs = max_epochs
         self.plot_gene_activity = plot_gene_activity
@@ -50,7 +50,7 @@ class Swarm():
                     num_rows = int(np.ceil(num_genes / float(num_cols)))
                     reshaped_global_positions = history.reshape(num_rows, num_cols)
 
-                    gene_names = self.swarm[0].data.gene_list
+                    gene_names = self.swarm[0].data.gene_name_list
 
                     reshaped_global_gene_names = np.array(gene_names).reshape(num_rows, num_cols)
 
@@ -82,15 +82,14 @@ class Swarm():
         # begin optimization loop
         for timestep_i in range(self.max_epochs):
 
-            sys.stdout.write("\r{} / {} -- Best Error: {}".format(timestep_i, self.max_epochs, self.best_global_error))
-            sys.stdout.flush()
+            print("{} / {} -- Best Error: {}".format(timestep_i, self.max_epochs, self.best_global_error))
 
             # cycle through particles in swarm and evaluate fitness
             for agent_i in self.swarm:
                 agent_i.evaluate()
 
                 # determine if current particle is the best (globally)
-                if agent_i.current_error < self.best_global_error or self.best_global_error == -1:
+                if (agent_i.current_error < self.best_global_error and agent_i.current_error > 0) or self.best_global_error == -1:
                     self.best_global_position = agent_i.current_position
                     self.best_global_error = float(agent_i.current_error)
                     self.best_global_feature_importances = agent_i.full_feature_importances
@@ -114,6 +113,6 @@ class Swarm():
         print('GLOBAL -- Best Error: {}'.format(self.best_global_error))
         print("Best positions: ")
         for gene_i, gene_state in enumerate(self.best_global_position):
-            gene_name = self.swarm[0].data.gene_list[gene_i]
+            gene_name = self.swarm[0].data.gene_name_list[gene_i]
             gene_state_str = "on" if gene_state else "off"
             print("\t{:20s} : {:8s}".format(gene_name, gene_state_str))
