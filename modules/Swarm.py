@@ -1,4 +1,5 @@
 import sys
+import json
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -21,7 +22,9 @@ class Swarm():
         self.history = {
             "position"              : [],
             "error"                 : [],
-            "feature_importance"    : []
+            "feature_importance"    : [],
+            "num_genes_active"      : [],
+            "error_stats"           : []
         }
 
         self.final_results = None
@@ -45,24 +48,25 @@ class Swarm():
                     print("\n")
                     print("\n")
 
+                    history = history[:100].reshape(100, 1)
+
                     num_genes = history.shape[0]
                     num_cols = 10
                     num_rows = int(np.ceil(num_genes / float(num_cols)))
                     reshaped_global_positions = history.reshape(num_rows, num_cols)
 
-                    gene_names = self.swarm[0].data.gene_name_list
+                    gene_names = self.swarm[0].data.gene_name_list[:100]
 
                     reshaped_global_gene_names = np.array(gene_names).reshape(num_rows, num_cols)
 
                     plot_params = {
                         "cmap"          : ListedColormap(["#ffcccc", "#99ff99"]),
                         "linewidths"    : 1.5,
-                        "annot"         : reshaped_global_gene_names,
+                        "annot"         : reshaped_global_gene_names if len(reshaped_global_gene_names) < 100 else None,
                         "fmt"           : '',
                         "cbar"          : False if cbar_plotted else True
                     }
                     ax = sns.heatmap(reshaped_global_positions, **plot_params)
-
 
                     if not cbar_plotted:
                         cbar = ax.collections[0].colorbar
@@ -79,20 +83,30 @@ class Swarm():
             print("Exiting")
 
     def run(self):
+
         # begin optimization loop
         for timestep_i in range(self.max_epochs):
 
             print("{} / {} -- Best Error: {}".format(timestep_i, self.max_epochs, self.best_global_error))
 
             # cycle through particles in swarm and evaluate fitness
+            agent_errors = []
             for agent_i in self.swarm:
                 agent_i.evaluate()
 
+                agent_errors.append(agent_i.current_error)
+
                 # determine if current particle is the best (globally)
-                if (agent_i.current_error < self.best_global_error and agent_i.current_error > 0) or self.best_global_error == -1:
+                if (agent_i.current_error < self.best_global_error or self.best_global_error == -1) and agent_i.current_error > 0:
                     self.best_global_position = agent_i.current_position
                     self.best_global_error = float(agent_i.current_error)
                     self.best_global_feature_importances = agent_i.full_feature_importances
+
+            swarm_error_stats_i = {
+                "errors"    : agent_errors,
+                "mean"      : np.mean(agent_errors),
+                "std"       : np.std(agent_errors)
+            }
 
             # Update agent positions and velocities
             for agent_i in self.swarm:
@@ -103,6 +117,23 @@ class Swarm():
             self.history["error"].append(self.best_global_error)
             self.history["position"].append(self.best_global_position)
             self.history["feature_importance"].append(self.best_global_feature_importances)
+            self.history["error_stats"].append(swarm_error_stats_i)
+            self.history["num_genes_active"].append(self.best_global_position[self.best_global_position > 0].shape[0])
+
+        # Save data
+        write_data = {}
+        for key, val in self.history.items():
+            if key == "position":
+                new_data = []
+                for values_i in val:
+                    new_data.append(list(values_i))
+
+                write_data[key] = new_data
+            else:
+                write_data[key] = val
+
+        with open("experiments/results_{}_agents.json".format(self.num_agents), "w") as outfile:
+            json.dump(write_data, outfile)
 
         if self.plot_gene_activity:
             self.plot()

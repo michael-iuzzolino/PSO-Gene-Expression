@@ -9,6 +9,8 @@ from matplotlib import cm
 from scipy.stats import stats
 from sklearn.ensemble import RandomForestRegressor
 
+TESTING_LOAD_THRESHOLD = 5000
+
 class DataHandler(object):
     def __init__(self, percentiles, features, data_dir="../data", num_agents=None, top_k_variable_genes=10, show_variability_plot=False, baseline_iterations=5):
 
@@ -18,11 +20,12 @@ class DataHandler(object):
             "expression_data"   : "{}/genes_matrix_csv/expression_matrix.csv".format(data_dir),
             "columns_metadata"  : "{}/genes_matrix_csv/columns_metadata.csv".format(data_dir),
             "rows_metadata"     : "{}/genes_matrix_csv/rows_metadata.csv".format(data_dir),
-            "stats"             : "{}/genes_matrix_expression_variability.json".format(data_dir)
+            "stats"             : "{}/genes_matrix_expression_variability.json".format(data_dir),
+            "correlation"       : "{}/gene_correlations.json".format(data_dir)
         }
 
         # Setup the variables
-        self.features = features 
+        self.features = features
 
         self.num_agents = num_agents
         self.scale_num_agents = False if num_agents else True
@@ -72,7 +75,7 @@ class DataHandler(object):
 
         # Calculate correlations between target gene and all other genes
         # --------------------------------
-        self.__5_calculate_correlations()
+        self.__5_get_correlations()
         # --------------------------------
 
         # Calculate Baseline
@@ -262,7 +265,49 @@ class DataHandler(object):
         # Set target gene data
         self.target_gene_data = np.array(self.gene_expression_df.ix[self.target_gene]).reshape(-1,)
 
-    def __5_calculate_correlations(self):
+    def __5_get_correlations(self):
+
+        # Check if file exists
+        if os.path.exists(self.paths["correlation"]):
+            # If file exists, check if it contains correlation data for target gene
+            with open(self.paths["correlation"], "r") as infile:
+                correlation_data = json.load(infile)
+
+            if self.target_gene in correlation_data.keys():
+                self.highly_correlated_genes = correlation_data[self.target_gene]
+            else:
+                self.__5A_calculate_correlations()
+        else:
+            self.__5A_calculate_correlations()
+
+        # Set gene name list
+        self.gene_name_list = [val[0] for val in self.highly_correlated_genes]
+
+        # Set gene expression data, X
+        self.gene_expression_data = self.gene_expression_df.loc[self.gene_name_list]
+
+        # Set number of genes
+        self.num_genes = self.gene_expression_data.shape[0]
+
+        # Set number of agents
+        if self.scale_num_agents:
+            self.num_agents = int(self.num_genes * 0.10) # Set the num agents to 1/10th the number of genes
+
+    def __5B_write_correlation_data(self):
+        # Check if file exists
+        if os.path.exists(self.paths["correlation"]):
+            # If file exists, open and read in data, then append and write
+            with open(self.paths["correlation"], "r") as infile:
+                correlation_data = json.load(infile)
+
+            correlation_data[self.target_gene] = self.highly_correlated_genes
+
+        else:
+            write_data = {self.target_gene : self.highly_correlated_genes}
+            with open(self.paths["correlation"], "w") as outfile:
+                json.dump(write_data, outfile)
+
+    def __5A_calculate_correlations(self):
         """
             Calculate the pair-wise correlation between the target gene and all other genes (pearson correlation coefficient)
             Calculate the 5 and 95 percentiles and use to threshold and generate list of highly correlated genes: self.highly_correlated_gene_indices
@@ -277,6 +322,11 @@ class DataHandler(object):
         # -------------------------------------------------------------------------------------------
         gene_correlation_data = []
         for gene_i, gene_name in enumerate(self.full_gene_list):
+
+            # DEBUG
+            if TESTING_LOAD_THRESHOLD:
+                if gene_i > TESTING_LOAD_THRESHOLD:
+                    break
 
             # Skip if current gene is target
             if gene_name == self.target_gene:
@@ -331,19 +381,8 @@ class DataHandler(object):
         print("{} highly correlated genes.".format(len(self.highly_correlated_genes)))
         # -------------------------------------------------------------------------------------------
 
-        # Set gene name list
-        self.gene_name_list = [val[0] for val in self.highly_correlated_genes]
-
-        # Set gene expression data, X
-        self.gene_expression_data = self.gene_expression_df.loc[self.gene_name_list]
-
-        # Set number of genes
-        self.num_genes = self.gene_expression_data.shape[0]
-
-        # Set number of agents
-        if self.scale_num_agents:
-            self.num_agents = int(self.num_genes * 0.10) # Set the num agents to 1/10th the number of genes
-
+        # Write correlation data
+        self.__5B_write_correlation_data()
 
     def __6_calculate_baseline(self):
         print("Calculating baseline...")

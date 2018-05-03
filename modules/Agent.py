@@ -87,13 +87,17 @@ class Agent:
         # raw_input("")
 
         # check to see if the current position is an individual best
-        if (self.current_error < self.best_error and self.current_error > 0) or self.best_error == -1:
+        if self.best_error == -1:
+            self.best_position = self.current_position
+            self.best_error = self.current_error
+        elif self.current_error < self.best_error and self.current_error > 0:
             self.best_position = self.current_position
             self.best_error = self.current_error
 
 
     def update_velocity(self, best_global_position):
         new_velocities = []
+
         for gene_i in range(self.gene_dimensions):
             r1 = np.random.random()
             r2 = np.random.random()
