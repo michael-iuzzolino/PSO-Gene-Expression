@@ -3,6 +3,7 @@ import numpy as np
 from modules.config import *
 from modules.Swarm import Swarm
 from modules.DataHandler import DataHandler
+from modules.Plotter import Plotter
 
 def main():
 
@@ -13,7 +14,8 @@ def main():
         "show_variability_plot"     : PLOT_GENE_VARIABILITY_ON_LOAD,
         "percentiles"               : PERCENTILES,
         "features"                  : FEATURES,
-        "baseline_iterations"       : BASELINE_ITERATIONS
+        "baseline_iterations"       : BASELINE_ITERATIONS,
+        "num_subset_genes"          : NUM_SUBSET_GENES
     }
 
     data = DataHandler(**data_handler_params)
@@ -37,5 +39,9 @@ def main():
     pso_swarm.run()
     #--- END ----------------------------------------------------------------------+
 
+    path = "results_5_agents.json"
+    plotter = Plotter()
+    plotter.plot_gene_activation_heatmap(pso_swarm.history, data.gene_name_list, data.baseline_error)
+    plotter.data_analysis_plots(path)
 if __name__ == "__main__":
     main()

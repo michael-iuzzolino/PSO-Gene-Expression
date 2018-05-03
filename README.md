@@ -14,8 +14,11 @@ It is instantiated once inside of `main.py` and the object is passed to each Age
 Each agent evaluation, the Agent calls the data object with the set of selected indicies,
 and the data object yields the processed and encoded X, y data for feeding into the Random Forest Regressor.
 
+# Plotter
+Handles the plotting
+
 # Swarm
-The `Swarm.py` script contains the PSO algorithm, data history, and plotting function (visualization of active genes each training step)
+The `Swarm.py` script contains the PSO algorithm logic
 
 # Agent
-Agents of the system. Each time step, the PSO algorithm evaluates (`self.evaluate()`) each agent: evaluate finds the active gene indices and calls the data handler (self.data in Agent) to retrieve the processed and encoded X and target gene (y). The X,y are fed into the Random Forest regressor to obtain OOB Score and Feature Importances. `self._calculate_feature_importances()` groups the gene feature importances into a dictionary, but also aggregates the feature importances for the one-hot encoded features (sex, tissue id, etc.). 
+Agents of the system. Each time step, the PSO algorithm evaluates (`self.evaluate()`) each agent: evaluate finds the active gene indices and calls the data handler (self.data in Agent) to retrieve the processed and encoded X and target gene (y). The X,y are fed into the Random Forest regressor to obtain OOB Score and Feature Importances. `self._calculate_feature_importances()` groups the gene feature importances into a dictionary, but also aggregates the feature importances for the one-hot encoded features (sex, tissue id, etc.).

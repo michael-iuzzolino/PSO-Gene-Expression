@@ -3,16 +3,14 @@ import sys
 import numpy as np
 import pandas as pd
 import json
-import h5py
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from scipy.stats import stats
 from sklearn.ensemble import RandomForestRegressor
 
-TESTING_LOAD_THRESHOLD = 5000
 
 class DataHandler(object):
-    def __init__(self, percentiles, features, data_dir="../data", num_agents=None, top_k_variable_genes=10, show_variability_plot=False, baseline_iterations=5):
+    def __init__(self, percentiles, features, data_dir="../data", num_agents=None, top_k_variable_genes=10, show_variability_plot=False, baseline_iterations=5, num_subset_genes=5000):
 
         # Setup the directory paths
         self.data_dir = data_dir
@@ -26,6 +24,8 @@ class DataHandler(object):
 
         # Setup the variables
         self.features = features
+
+        self.num_subset_genes = num_subset_genes
 
         self.num_agents = num_agents
         self.scale_num_agents = False if num_agents else True
@@ -320,13 +320,12 @@ class DataHandler(object):
 
         # Calculate the Pearson correlation coefficients between each x_i in X and the target gene
         # -------------------------------------------------------------------------------------------
-        gene_correlation_data = []
-        for gene_i, gene_name in enumerate(self.full_gene_list):
 
-            # DEBUG
-            if TESTING_LOAD_THRESHOLD:
-                if gene_i > TESTING_LOAD_THRESHOLD:
-                    break
+        # Check for subset of genes
+        subset_of_genes = np.random.choice(self.full_gene_list, self.num_subset_genes) if self.num_subset_genes else self.full_gene_list
+
+        gene_correlation_data = []
+        for gene_i, gene_name in enumerate(subset_of_genes):
 
             # Skip if current gene is target
             if gene_name == self.target_gene:
@@ -349,7 +348,7 @@ class DataHandler(object):
                 except:
                     print("Fail again.")
 
-            sys.stdout.write("\r Gene {} / {}".format(gene_i, len(self.full_gene_list)))
+            sys.stdout.write("\r Gene {} / {}".format(gene_i+1, len(subset_of_genes)))
             sys.stdout.flush()
         # -------------------------------------------------------------------------------------------
 

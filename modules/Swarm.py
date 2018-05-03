@@ -2,9 +2,6 @@ import sys
 import json
 import numpy as np
 import time
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-import seaborn as sns
 
 from modules.Agent import Agent
 
@@ -35,65 +32,27 @@ class Swarm():
     def _init_swarm(self, agent_params):
         self.swarm = [Agent(agent_i, **agent_params) for agent_i in range(self.num_agents)]
 
-    def plot(self):
-        cbar_plotted = False # Prevents multiple cbar prints
-        try:
-            while True:
-                for history_i, (history, best_error_i, best_feature_importance) in enumerate(zip(self.history["position"], self.history["error"], self.history["feature_importance"])):
-                    print("\n")
-                    print("History {}".format(history_i+1))
-                    print("Feature importances")
-                    for key, val in best_feature_importance.items():
-                        print("\t{} : {}".format(key, val))
-                    print("\n")
-                    print("\n")
+    def _save_data(self):
+        write_data = {key : [list(values_i) for values_i in val] if key == "position" else val for key, val in self.history.items()}
 
-                    history = history[:100].reshape(100, 1)
-
-                    num_genes = history.shape[0]
-                    num_cols = 10
-                    num_rows = int(np.ceil(num_genes / float(num_cols)))
-                    reshaped_global_positions = history.reshape(num_rows, num_cols)
-
-                    gene_names = self.swarm[0].data.gene_name_list[:100]
-
-                    reshaped_global_gene_names = np.array(gene_names).reshape(num_rows, num_cols)
-
-                    plot_params = {
-                        "cmap"          : ListedColormap(["#ffcccc", "#99ff99"]),
-                        "linewidths"    : 1.5,
-                        "annot"         : reshaped_global_gene_names if len(reshaped_global_gene_names) < 100 else None,
-                        "fmt"           : '',
-                        "cbar"          : False if cbar_plotted else True
-                    }
-                    ax = sns.heatmap(reshaped_global_positions, **plot_params)
-
-                    if not cbar_plotted:
-                        cbar = ax.collections[0].colorbar
-                        cbar.set_ticks([0.25, 0.75])
-                        cbar.set_ticklabels(["OFF", "ON"])
-                        cbar_plotted = True
-
-                    plt.title("Timestep: {} / {} \n Best Error: {:0.4f}".format(history_i+1, len(self.history["position"]), best_error_i))
-                    plt.axis('off')
-                    plt.pause(0.005)
-                    plt.cla()
-
-        except KeyboardInterrupt:
-            print("Exiting")
+        with open("experiments/results_{}_agents.json".format(self.num_agents), "w") as outfile:
+            json.dump(write_data, outfile)
 
     def run(self):
-
+        """
+            PSO Algorithm here
+        """
         # begin optimization loop
-        for timestep_i in range(self.max_epochs):
-
-            print("{} / {} -- Best Error: {}".format(timestep_i, self.max_epochs, self.best_global_error))
+        for epoch_i in range(self.max_epochs):
 
             # cycle through particles in swarm and evaluate fitness
             agent_errors = []
             for agent_i in self.swarm:
+
+                # Evaluate the agent
                 agent_i.evaluate()
 
+                # Update the agent errors
                 agent_errors.append(agent_i.current_error)
 
                 # determine if current particle is the best (globally)
@@ -103,9 +62,10 @@ class Swarm():
                     self.best_global_feature_importances = agent_i.full_feature_importances
 
             swarm_error_stats_i = {
-                "errors"    : agent_errors,
-                "mean"      : np.mean(agent_errors),
-                "std"       : np.std(agent_errors)
+                "errors"        : agent_errors,
+                "mean"          : np.mean(agent_errors),
+                "std"           : np.std(agent_errors),
+                "best_error"    : self.best_global_error
             }
 
             # Update agent positions and velocities
@@ -120,30 +80,8 @@ class Swarm():
             self.history["error_stats"].append(swarm_error_stats_i)
             self.history["num_genes_active"].append(self.best_global_position[self.best_global_position > 0].shape[0])
 
+            # Update user with training info
+            print("{} / {} -- Best Error: {}".format(epoch_i, self.max_epochs, self.best_global_error))
+
         # Save data
-        write_data = {}
-        for key, val in self.history.items():
-            if key == "position":
-                new_data = []
-                for values_i in val:
-                    new_data.append(list(values_i))
-
-                write_data[key] = new_data
-            else:
-                write_data[key] = val
-
-        with open("experiments/results_{}_agents.json".format(self.num_agents), "w") as outfile:
-            json.dump(write_data, outfile)
-
-        if self.plot_gene_activity:
-            self.plot()
-
-        # print final results
-        print("\n\n")
-        print("Finished PSO!")
-        print('GLOBAL -- Best Error: {}'.format(self.best_global_error))
-        print("Best positions: ")
-        for gene_i, gene_state in enumerate(self.best_global_position):
-            gene_name = self.swarm[0].data.gene_name_list[gene_i]
-            gene_state_str = "on" if gene_state else "off"
-            print("\t{:20s} : {:8s}".format(gene_name, gene_state_str))
+        self._save_data()
